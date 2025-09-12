@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Test — fantasmagorie</title>
+  <title>Fantasmagorie Wall</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     html,body {
@@ -22,6 +22,52 @@
       text-shadow: 0 6px 30px rgba(0,0,0,0.6), 0 2px 8px rgba(255,255,255,0.03) inset;
     }
   </style>
+
+  <!-- Firebase script goes here -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "firebase/app";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+    apiKey: "AIzaSyA-QVNklhINy_ov0qXHMq5blEueoC6l_fY",
+    authDomain: "fantasmagoric-tshirt.firebaseapp.com",
+    databaseURL: "https://fantasmagoric-tshirt-default-rtdb.firebaseio.com",
+    projectId: "fantasmagoric-tshirt",
+    storageBucket: "fantasmagoric-tshirt.firebasestorage.app",
+    messagingSenderId: "912332373957",
+    appId: "1:912332373957:web:4a57bc4abb448187b495ac"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("form");
+      const background = document.getElementById("background");
+
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const name = document.getElementById("name").value;
+        const sentence = document.getElementById("sentence").value;
+        push(ref(db, "messages"), { name, sentence });
+        form.reset();
+      });
+
+      onChildAdded(ref(db, "messages"), snapshot => {
+        const data = snapshot.val();
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.textContent = data.name + ": " + data.sentence;
+        div.style.top = Math.random() * 100 + "%";
+        div.style.left = Math.random() * 100 + "%";
+        background.appendChild(div);
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="word">fantasmagorie</div>
