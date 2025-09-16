@@ -165,52 +165,43 @@ function startDraw(x,y){
   drawing = true;
   prevX = x;
   prevY = y;
+  layer.ctx.beginPath();
+  layer.ctx.moveTo(x,y);
 }
 
-function draw(x, y){
+function draw(x,y){
   const layer = getActiveLayer();
   if(!layer || !drawing) return;
 
-  if(mode === "brush") {
-    // Crée un canvas temporaire
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = layer.canvas.width;
-    tempCanvas.height = layer.canvas.height;
-    const tempCtx = tempCanvas.getContext("2d");
+  if(mode === "brush"){
+    layer.ctx.globalAlpha = brushOpacity;
+    layer.ctx.strokeStyle = brushColor;
+    layer.ctx.lineWidth = brushSize;
+    layer.ctx.lineCap = "round";
+    layer.ctx.lineJoin = "round";
 
-    // Paramètres du pinceau
-    tempCtx.strokeStyle = brushColor;
-    tempCtx.lineWidth = brushSize;
-    tempCtx.lineCap = "round";
-    tempCtx.lineJoin = "round";
-    tempCtx.globalAlpha = brushOpacity;
+    layer.ctx.lineTo(x,y);
+    layer.ctx.stroke();
+    layer.ctx.beginPath();
+    layer.ctx.moveTo(x,y);
 
-    // Tracé sur le canvas temporaire
-    tempCtx.beginPath();
-    tempCtx.moveTo(prevX, prevY);
-    tempCtx.lineTo(x, y);
-    tempCtx.stroke();
-
-    // Copier sur le canvas réel
-    layer.ctx.drawImage(tempCanvas, 0, 0);
-
-  } else if(mode === "eraser") {
+  } else if(mode === "eraser"){
     layer.ctx.globalCompositeOperation = "destination-out";
-    layer.ctx.strokeStyle = "rgba(0,0,0,1)";
     layer.ctx.lineWidth = brushSize;
     layer.ctx.lineCap = "round";
     layer.ctx.lineJoin = "round";
     layer.ctx.globalAlpha = 1;
 
-    layer.ctx.lineTo(x, y);
+    layer.ctx.lineTo(x,y);
     layer.ctx.stroke();
     layer.ctx.beginPath();
-    layer.ctx.moveTo(x, y);
+    layer.ctx.moveTo(x,y);
   }
 
   prevX = x;
   prevY = y;
 }
+
 
 
 // Mouse & Touch events
