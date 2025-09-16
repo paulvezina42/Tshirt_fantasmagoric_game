@@ -68,11 +68,18 @@ button {
     flex-direction: column;
     width: 90%;
     gap: 10px;
+
+    /* ✅ center properly without overflow */
+    left: auto;
+    right: auto;
+    transform: none;
+    margin: 0 auto;
   }
 
   input, button {
     font-size: 18px;
     padding: 10px;
     width: 100%;
+    box-sizing: border-box; /* ✅ prevents slight overflow */
   }
 }
