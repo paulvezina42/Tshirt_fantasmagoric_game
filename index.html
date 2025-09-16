@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fantasmagorie Paint + Upload</title>
+<title>Fantasmagorie Paint + ImgBB Upload</title>
 <style>
   body {
     margin: 0;
@@ -18,6 +18,7 @@
     margin: 10px;
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
   }
   canvas {
     border: 2px solid white;
@@ -49,17 +50,15 @@
 <canvas id="paintCanvas" width="400" height="400"></canvas>
 
 <script>
-  // -----------------------------
-  // Canvas drawing setup
   const canvas = document.getElementById("paintCanvas");
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = "#000000"; // initial black background
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   let drawing = false;
   let brushColor = document.getElementById("colorPicker").value;
   let brushSize = document.getElementById("brushSize").value;
-  let mode = "brush"; // brush or eraser
+  let mode = "brush";
 
   function startDraw(x, y) {
     drawing = true;
@@ -70,7 +69,7 @@
   function draw(x, y) {
     if (!drawing) return;
     ctx.lineWidth = brushSize;
-    ctx.strokeStyle = (mode === "brush") ? brushColor : "#000000";
+    ctx.strokeStyle = mode === "brush" ? brushColor : "#000000";
     ctx.lineCap = "round";
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -103,22 +102,19 @@
   }, { passive: false });
   canvas.addEventListener("touchend", stopDraw);
 
-  // Brush / Eraser / Color / Size
+  // Toolbar actions
   document.getElementById("brushBtn").addEventListener("click", () => mode = "brush");
   document.getElementById("eraserBtn").addEventListener("click", () => mode = "eraser");
   document.getElementById("colorPicker").addEventListener("change", e => brushColor = e.target.value);
   document.getElementById("brushSize").addEventListener("change", e => brushSize = e.target.value);
-
-  // Clear button
   document.getElementById("clearBtn").addEventListener("click", () => {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = brushColor;
   });
 
-  // -----------------------------
   // ImgBB Upload
-  const apiKey = "YOUR_IMGBB_API_KEY"; // Replace with your API key
+  const apiKey = "YOUR_IMGBB_API_KEY"; // <--- Replace with your API key
   document.getElementById("uploadBtn").addEventListener("click", async () => {
     const base64Image = canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
     const formData = new FormData();
