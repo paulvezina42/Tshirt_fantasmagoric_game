@@ -5,10 +5,12 @@
   <title>Fantasmagorie Wall</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="css/changeable-format.css">
+
   <script type="module">
     // Import Firebase SDK pieces
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
 
     // Firebase config (safe to expose in web clients)
     const firebaseConfig = {
@@ -21,24 +23,95 @@
       appId: "1:912332373957:web:4a57bc4abb448187b495ac"
     };
 
-    // Init Firebase
+    // Init Firebase ONCE
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const storage = getStorage(app);
 
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("form");
       const background = document.getElementById("background");
 
-      form.addEventListener("submit", e => {
+      // ===== Drawing setup =====
+      const canvas = document.getElementById("drawCanvas");
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+
+      let drawing = false;
+
+      function startDraw(x, y) {
+        drawing = true;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }
+
+      function draw(x, y) {
+        if (!drawing) return;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      function stopDraw() {
+        drawing = false;
+        ctx.beginPath();
+      }
+
+      // Mouse events
+      canvas.addEventListener("mousedown", e => startDraw(e.offsetX, e.offsetY));
+      canvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
+      canvas.addEventListener("mouseup", stopDraw);
+      canvas.addEventListener("mouseleave", stopDraw);
+
+      // Touch events
+      canvas.addEventListener("touchstart", e => {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        startDraw(touch.clientX - rect.left, touch.clientY - rect.top);
+      });
+      canvas.addEventListener("touchmove", e => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        draw(touch.clientX - rect.left, touch.clientY - rect.top);
+      }, { passive: false });
+      canvas.addEventListener("touchend", stopDraw);
+
+      // Clear canvas
+      document.getElementById("clearCanvas").addEventListener("click", () => {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+      });
+
+      // ===== Form submit =====
+      form.addEventListener("submit", async e => {
         e.preventDefault();
         const name = document.getElementById("name").value.trim();
         const sentence = document.getElementById("sentence").value.trim();
-        if (name && sentence) {
-          push(ref(db, "messages"), { name, sentence });
-          form.reset();
-        }
+
+        // Convert canvas to image
+        const dataURL = canvas.toDataURL("image/png");
+
+        // Upload image to Firebase Storage
+        const imgRef = storageRef(storage, "images/" + Date.now() + ".png");
+        await uploadString(imgRef, dataURL, "data_url");
+        const url = await getDownloadURL(imgRef);
+
+        // Save text + image URL
+        push(ref(db, "messages"), { name, sentence, image: url });
+
+        // Reset form + canvas
+        form.reset();
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
       });
 
+      // ===== Display messages =====
       onChildAdded(ref(db, "messages"), snapshot => {
         const data = snapshot.val();
         const div = document.createElement("div");
@@ -47,6 +120,16 @@
         div.style.top = Math.random() * 90 + "%";
         div.style.left = Math.random() * 90 + "%";
         background.appendChild(div);
+
+        if (data.image) {
+          const img = document.createElement("img");
+          img.src = data.image;
+          img.style.position = "absolute";
+          img.style.top = Math.random() * 80 + "%";
+          img.style.left = Math.random() * 80 + "%";
+          img.style.width = "100px";
+          background.appendChild(img);
+        }
       });
     });
   </script>
@@ -66,96 +149,5 @@
     <button type="submit">Save</button>
     <button type="button" id="clearCanvas">Clear Drawing</button>
   </form>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
-    import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
-
-    const firebaseConfig = { /* your config here */ };
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const storage = getStorage(app);
-
-    // Drawing logic
-    const canvas = document.getElementById("drawCanvas");
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "black"; // background
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "white"; // pen color
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-
-    let drawing = false;
-
-    function startDraw(x, y) {
-      drawing = true;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-    }
-
-    function draw(x, y) {
-      if (!drawing) return;
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-
-    function stopDraw() {
-      drawing = false;
-      ctx.beginPath();
-    }
-
-    // Mouse events
-    canvas.addEventListener("mousedown", e => startDraw(e.offsetX, e.offsetY));
-    canvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
-    canvas.addEventListener("mouseup", stopDraw);
-    canvas.addEventListener("mouseleave", stopDraw);
-
-    // Touch events
-    canvas.addEventListener("touchstart", e => {
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      startDraw(touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-    canvas.addEventListener("touchmove", e => {
-      e.preventDefault(); // prevent scrolling
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      draw(touch.clientX - rect.left, touch.clientY - rect.top);
-    }, { passive: false });
-    canvas.addEventListener("touchend", stopDraw);
-
-    // Clear canvas
-    document.getElementById("clearCanvas").addEventListener("click", () => {
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "white";
-    });
-
-    // Form submit
-    document.getElementById("form").addEventListener("submit", async e => {
-      e.preventDefault();
-      const name = document.getElementById("name").value;
-      const sentence = document.getElementById("sentence").value;
-
-      // Convert canvas to image
-      const dataURL = canvas.toDataURL("image/png");
-
-      // Upload image to Firebase Storage
-      const imgRef = storageRef(storage, "images/" + Date.now() + ".png");
-      await uploadString(imgRef, dataURL, "data_url");
-      const url = await getDownloadURL(imgRef);
-
-      // Save text + image URL in Realtime Database
-      push(ref(db, "messages"), { name, sentence, image: url });
-
-      // Reset form + canvas
-      e.target.reset();
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "white";
-    });
-  </script>
 </body>
-
 </html>
