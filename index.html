@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fantasmagorie Paint + ImgBB Upload</title>
+<title>Fantasmagorie Paint + Transparent PNG</title>
 <style>
   body {
     margin: 0;
@@ -19,6 +19,13 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    align-items: center;
+  }
+  .bg-color {
+    width: 30px;
+    height: 30px;
+    border: 2px solid white;
+    cursor: pointer;
   }
   canvas {
     border: 2px solid white;
@@ -39,11 +46,18 @@
 <body>
 
 <div class="toolbar">
-  <input type="color" id="colorPicker" value="#ffffff">
-  <input type="range" id="brushSize" min="1" max="50" value="5">
+  <input type="color" id="colorPicker" value="#ffffff" title="Brush Color">
+  <input type="range" id="brushSize" min="1" max="50" value="5" title="Brush Size">
   <button id="brushBtn">Brush</button>
   <button id="eraserBtn">Eraser</button>
   <button id="clearBtn">Clear</button>
+
+  <!-- Couleurs de fond temporaire -->
+  <div class="bg-color" style="background:#111;" data-color="#111" title="Fond noir"></div>
+  <div class="bg-color" style="background:#222;" data-color="#222" title="Fond gris foncé"></div>
+  <div class="bg-color" style="background:#444;" data-color="#444" title="Fond gris moyen"></div>
+  <div class="bg-color" style="background:#888;" data-color="#888" title="Fond gris clair"></div>
+
   <button id="uploadBtn">Upload Drawing</button>
 </div>
 
@@ -52,13 +66,25 @@
 <script>
   const canvas = document.getElementById("paintCanvas");
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#000000"; // initial black background
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Canvas transparent
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   let drawing = false;
   let brushColor = document.getElementById("colorPicker").value;
   let brushSize = document.getElementById("brushSize").value;
-  let mode = "brush";
+  let mode = "brush"; // brush ou eraser
+  let bgColor = "#111"; // couleur de fond temporaire pour affichage
+
+  // Mettre à jour le fond visuel temporaire
+  function drawBackground() {
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-over"; // mettre derrière le dessin
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
+  drawBackground();
 
   function startDraw(x, y) {
     drawing = true;
@@ -69,7 +95,7 @@
   function draw(x, y) {
     if (!drawing) return;
     ctx.lineWidth = brushSize;
-    ctx.strokeStyle = mode === "brush" ? brushColor : "#000000";
+    ctx.strokeStyle = mode === "brush" ? brushColor : "rgba(0,0,0,1)";
     ctx.lineCap = "round";
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -82,13 +108,13 @@
     ctx.beginPath();
   }
 
-  // Mouse events
+  // Événements souris
   canvas.addEventListener("mousedown", e => startDraw(e.offsetX, e.offsetY));
   canvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
   canvas.addEventListener("mouseup", stopDraw);
   canvas.addEventListener("mouseleave", stopDraw);
 
-  // Touch events
+  // Événements touch
   canvas.addEventListener("touchstart", e => {
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
@@ -102,21 +128,35 @@
   }, { passive: false });
   canvas.addEventListener("touchend", stopDraw);
 
-  // Toolbar actions
+  // Toolbar
   document.getElementById("brushBtn").addEventListener("click", () => mode = "brush");
   document.getElementById("eraserBtn").addEventListener("click", () => mode = "eraser");
   document.getElementById("colorPicker").addEventListener("change", e => brushColor = e.target.value);
   document.getElementById("brushSize").addEventListener("change", e => brushSize = e.target.value);
   document.getElementById("clearBtn").addEventListener("click", () => {
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = brushColor;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawBackground();
   });
 
-  // ImgBB Upload
-  const apiKey = "ae1416b43b6f7cef2d2585e752d31d32"; 
+  // Changer le fond visuel temporaire
+  document.querySelectorAll(".bg-color").forEach(div => {
+    div.addEventListener("click", () => {
+      bgColor = div.dataset.color;
+      drawBackground();
+    });
+  });
+
+  // Upload vers ImgBB
+  const apiKey = "YOUR_IMGBB_API_KEY"; // <-- Remplacer par votre clé ImgBB
   document.getElementById("uploadBtn").addEventListener("click", async () => {
-    const base64Image = canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
+    // Crée une image temporaire uniquement avec le dessin (sans le fond visible)
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.drawImage(canvas, 0, 0); // copie le dessin
+
+    const base64Image = tempCanvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
     const formData = new FormData();
     formData.append("key", apiKey);
     formData.append("image", base64Image);
