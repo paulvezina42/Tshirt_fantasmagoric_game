@@ -27,11 +27,17 @@
     border: 2px solid white;
     cursor: pointer;
   }
+  #canvasContainer {
+    position: relative;
+    width: 400px;
+    height: 400px;
+  }
   canvas {
     border: 2px solid white;
+    position: absolute;
+    top: 0;
+    left: 0;
     touch-action: none;
-    display: block;
-    margin-bottom: 10px;
   }
   input, button {
     padding: 4px 8px;
@@ -82,19 +88,21 @@
 
 <div id="layersList"></div>
 
-<!-- Canvas container -->
-<div style="position: relative;">
+<div id="canvasContainer">
   <canvas id="bgCanvas" width="400" height="400"></canvas>
 </div>
 
 <script>
 const apiKey = "ae1416b43b6f7cef2d2585e752d31d32"; // <-- Remplacer par votre clé ImgBB
 
-// Background Canvas (locké)
+const canvasContainer = document.getElementById("canvasContainer");
+
+// Background canvas
 const bgCanvas = document.getElementById("bgCanvas");
 const bgCtx = bgCanvas.getContext("2d");
 let bgColor = "#111";
 function drawBackground() {
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
   bgCtx.fillStyle = bgColor;
   bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
 }
@@ -113,7 +121,7 @@ function addLayer() {
   canvas.style.top = "0";
   canvas.style.left = "0";
   canvas.style.zIndex = layers.length + 1;
-  document.body.appendChild(canvas);
+  canvasContainer.appendChild(canvas);
 
   const ctx = canvas.getContext("2d");
   ctx.lineCap = "round";
@@ -122,6 +130,7 @@ function addLayer() {
   activeLayerIndex = layers.length - 1;
   updateLayersUI();
 }
+
 function updateLayersUI() {
   layersListDiv.innerHTML = "";
   layers.forEach((layer, i) => {
@@ -133,6 +142,7 @@ function updateLayersUI() {
     layersListDiv.appendChild(btn);
   });
 }
+
 function getActiveLayer() {
   if(activeLayerIndex < 0) return null;
   return layers[activeLayerIndex];
@@ -169,24 +179,24 @@ function stopDraw(){
 }
 
 // Mouse events
-document.addEventListener("mousedown", e=>startDraw(e.offsetX,e.offsetY));
-document.addEventListener("mousemove", e=>draw(e.offsetX,e.offsetY));
-document.addEventListener("mouseup", stopDraw);
-document.addEventListener("mouseleave", stopDraw);
+canvasContainer.addEventListener("mousedown", e=>startDraw(e.offsetX,e.offsetY));
+canvasContainer.addEventListener("mousemove", e=>draw(e.offsetX,e.offsetY));
+canvasContainer.addEventListener("mouseup", stopDraw);
+canvasContainer.addEventListener("mouseleave", stopDraw);
 
 // Touch events
-document.addEventListener("touchstart", e=>{
-  const rect = bgCanvas.getBoundingClientRect();
+canvasContainer.addEventListener("touchstart", e=>{
+  const rect = canvasContainer.getBoundingClientRect();
   const touch = e.touches[0];
   startDraw(touch.clientX-rect.left, touch.clientY-rect.top);
 });
-document.addEventListener("touchmove", e=>{
+canvasContainer.addEventListener("touchmove", e=>{
   e.preventDefault();
-  const rect = bgCanvas.getBoundingClientRect();
+  const rect = canvasContainer.getBoundingClientRect();
   const touch = e.touches[0];
   draw(touch.clientX-rect.left, touch.clientY-rect.top);
 },{passive:false});
-document.addEventListener("touchend", stopDraw);
+canvasContainer.addEventListener("touchend", stopDraw);
 
 // Toolbar
 document.getElementById("brushBtn").addEventListener("click", ()=>mode="brush");
@@ -212,7 +222,6 @@ document.getElementById("addLayerBtn").addEventListener("click", addLayer);
 
 // Upload
 document.getElementById("uploadBtn").addEventListener("click", async ()=>{
-  // Create temp canvas for export
   const exportCanvas = document.createElement("canvas");
   exportCanvas.width = bgCanvas.width;
   exportCanvas.height = bgCanvas.height;
