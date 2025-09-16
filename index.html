@@ -1,179 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Test — Drawing + Text</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    html,body {
-      height:100%;
-      margin:0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(135deg, #0f172a, #0b1220);
-      color: white;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-    }
-
-    .toolbar {
-      margin: 10px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    canvas {
-      border: 2px solid white;
-      border-radius: 8px;
-      background: white;
-      touch-action: none; /* Important for mobile touch drawing */
-    }
-
-    .inputs {
-      margin-top: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 90%;
-      max-width: 400px;
-    }
-
-    input, textarea, button {
-      padding: 10px;
-      border-radius: 6px;
-      border: none;
-      font-size: 1rem;
-    }
-
-    button {
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-    }
-
-    @media (max-width: 600px) {
-      canvas {
-        width: 95vw;
-        height: 60vh;
-      }
-    }
-    @media (min-width: 601px) {
-      canvas {
-        width: 600px;
-        height: 400px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas → ImgBB</title>
 </head>
 <body>
-  <div class="toolbar">
-    <input type="color" id="colorPicker" value="#000000">
-    <input type="range" id="brushSize" min="1" max="50" value="5">
-    <button id="brushBtn">Brush</button>
-    <button id="eraserBtn">Eraser</button>
-    <button id="clearBtn">Clear</button>
-  </div>
+<canvas id="canvas" width="300" height="300" style="border:1px solid black;"></canvas>
+<br>
+<button id="uploadBtn">Upload Drawing</button>
 
-  <canvas id="paintCanvas"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-  <div class="inputs">
-    <input type="text" id="nameInput" placeholder="Your name">
-    <textarea id="messageInput" placeholder="Your short sentence"></textarea>
-    <button id="submitBtn">Submit</button>
-  </div>
+// Simple drawing logic
+let drawing = false;
+canvas.addEventListener("mousedown", () => drawing = true);
+canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
+canvas.addEventListener("mousemove", (e) => {
+    if (!drawing) return;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "black";
+    ctx.lineCap = "round";
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+});
 
-  <script>
-    const canvas = document.getElementById("paintCanvas");
-    const ctx = canvas.getContext("2d");
-    const colorPicker = document.getElementById("colorPicker");
-    const brushSize = document.getElementById("brushSize");
-    const brushBtn = document.getElementById("brushBtn");
-    const eraserBtn = document.getElementById("eraserBtn");
-    const clearBtn = document.getElementById("clearBtn");
+const apiKey = "ae1416b43b6f7cef2d2585e752d31d32";
 
-    let painting = false;
-    let erasing = false;
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+    // Convert canvas to base64
+    const base64Image = canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
 
-    function resizeCanvas() {
-      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      if (window.innerWidth < 600) {
-        canvas.width = window.innerWidth * 0.95;
-        canvas.height = window.innerHeight * 0.6;
-      } else {
-        canvas.width = 600;
-        canvas.height = 400;
-      }
-      ctx.putImageData(data, 0, 0);
+    // Send POST request to ImgBB
+    const formData = new FormData();
+    formData.append("key", apiKey);
+    formData.append("image", base64Image);
+
+    try {
+        const response = await fetch("https://api.imgbb.com/1/upload", {
+            method: "POST",
+            body: formData
+        });
+        const data = await response.json();
+        console.log("ImgBB URL:", data.data.url);
+        alert("Drawing uploaded! URL: " + data.data.url);
+    } catch (err) {
+        console.error("Upload failed:", err);
     }
-
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
-
-    function startPosition(e) {
-      painting = true;
-      draw(e);
-    }
-
-    function endPosition() {
-      painting = false;
-      ctx.beginPath();
-    }
-
-    function getPos(e) {
-      if (e.touches) {
-        return {
-          x: e.touches[0].clientX - canvas.offsetLeft,
-          y: e.touches[0].clientY - canvas.offsetTop
-        };
-      } else {
-        return {
-          x: e.clientX - canvas.offsetLeft,
-          y: e.clientY - canvas.offsetTop
-        };
-      }
-    }
-
-    function draw(e) {
-      if (!painting) return;
-      const pos = getPos(e);
-
-      ctx.lineWidth = brushSize.value;
-      ctx.lineCap = "round";
-      ctx.strokeStyle = erasing ? "#ffffff" : colorPicker.value;
-
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-    }
-
-    // Event listeners
-    canvas.addEventListener("mousedown", startPosition);
-    canvas.addEventListener("mouseup", endPosition);
-    canvas.addEventListener("mousemove", draw);
-
-    canvas.addEventListener("touchstart", (e) => { startPosition(e); e.preventDefault(); });
-    canvas.addEventListener("touchend", endPosition);
-    canvas.addEventListener("touchmove", (e) => { draw(e); e.preventDefault(); });
-
-    brushBtn.addEventListener("click", () => erasing = false);
-    eraserBtn.addEventListener("click", () => erasing = true);
-    clearBtn.addEventListener("click", () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-
-    // Submission (hook to Firebase later)
-    document.getElementById("submitBtn").addEventListener("click", () => {
-      const name = document.getElementById("nameInput").value;
-      const msg = document.getElementById("messageInput").value;
-      const drawing = canvas.toDataURL("image/png"); // <-- Base64 of drawing
-
-      console.log("Name:", name);
-      console.log("Message:", msg);
-      console.log("Drawing saved:", drawing.substring(0,50)+"..."); 
-      alert("Your drawing and text would be saved to Firebase here!");
-    });
-  </script>
+});
+</script>
 </body>
 </html>
