@@ -163,35 +163,55 @@ function startDraw(x,y){
   const layer = getActiveLayer();
   if(!layer) return;
   drawing = true;
-  layer.ctx.beginPath();
-  layer.ctx.moveTo(x,y);
+  prevX = x;
+  prevY = y;
 }
-function draw(x,y){
+
+function draw(x, y){
   const layer = getActiveLayer();
   if(!layer || !drawing) return;
+
   if(mode === "brush") {
-    layer.ctx.globalCompositeOperation = "source-over";
-    layer.ctx.strokeStyle = brushColor;
-    layer.ctx.globalAlpha = brushOpacity;
+    // Crée un canvas temporaire
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = layer.canvas.width;
+    tempCanvas.height = layer.canvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+
+    // Paramètres du pinceau
+    tempCtx.strokeStyle = brushColor;
+    tempCtx.lineWidth = brushSize;
+    tempCtx.lineCap = "round";
+    tempCtx.lineJoin = "round";
+    tempCtx.globalAlpha = brushOpacity;
+
+    // Tracé sur le canvas temporaire
+    tempCtx.beginPath();
+    tempCtx.moveTo(prevX, prevY);
+    tempCtx.lineTo(x, y);
+    tempCtx.stroke();
+
+    // Copier sur le canvas réel
+    layer.ctx.drawImage(tempCanvas, 0, 0);
+
   } else if(mode === "eraser") {
     layer.ctx.globalCompositeOperation = "destination-out";
     layer.ctx.strokeStyle = "rgba(0,0,0,1)";
+    layer.ctx.lineWidth = brushSize;
+    layer.ctx.lineCap = "round";
+    layer.ctx.lineJoin = "round";
     layer.ctx.globalAlpha = 1;
+
+    layer.ctx.lineTo(x, y);
+    layer.ctx.stroke();
+    layer.ctx.beginPath();
+    layer.ctx.moveTo(x, y);
   }
-  layer.ctx.lineWidth = brushSize;
-  layer.ctx.lineTo(x,y);
-  layer.ctx.stroke();
-  layer.ctx.beginPath();
-  layer.ctx.moveTo(x,y);
+
+  prevX = x;
+  prevY = y;
 }
-function stopDraw(){
-  const layer = getActiveLayer();
-  if(!layer) return;
-  drawing=false;
-  layer.ctx.beginPath();
-  layer.ctx.globalAlpha = 1; // reset
-  layer.ctx.globalCompositeOperation = "source-over"; // reset
-}
+
 
 // Mouse & Touch events
 canvasContainer.addEventListener("mousedown", e=>startDraw(e.offsetX,e.offsetY));
