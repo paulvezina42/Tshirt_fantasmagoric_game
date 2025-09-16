@@ -7,12 +7,10 @@
   <link rel="stylesheet" href="css/changeable-format.css">
 
   <script type="module">
-    // Import Firebase SDK pieces
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
     import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
 
-    // Firebase config (safe to expose in web clients)
     const firebaseConfig = {
       apiKey: "AIzaSyA-QVNklhINy_ov0qXHMq5blEueoC6l_fY",
       authDomain: "fantasmagoric-tshirt.firebaseapp.com",
@@ -23,7 +21,6 @@
       appId: "1:912332373957:web:4a57bc4abb448187b495ac"
     };
 
-    // Init Firebase ONCE
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const storage = getStorage(app);
@@ -31,16 +28,28 @@
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("form");
       const background = document.getElementById("background");
-
-      // ===== Drawing setup =====
       const canvas = document.getElementById("drawCanvas");
       const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
 
+      // ✅ Resize canvas dynamically
+      function resizeCanvas() {
+        canvas.width = Math.min(window.innerWidth - 40, 500); // max 500px wide
+        canvas.height = Math.min(window.innerHeight / 2, 400); // half screen or 400px
+        resetCanvas();
+      }
+
+      function resetCanvas() {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "white";  // drawing color
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+      }
+
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+
+      // ✅ Drawing logic
       let drawing = false;
 
       function startDraw(x, y) {
@@ -60,58 +69,50 @@
         ctx.beginPath();
       }
 
-      // Mouse events
+      // Mouse
       canvas.addEventListener("mousedown", e => startDraw(e.offsetX, e.offsetY));
       canvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
       canvas.addEventListener("mouseup", stopDraw);
       canvas.addEventListener("mouseleave", stopDraw);
 
-      // Touch events
+      // Touch (fix offset math)
       canvas.addEventListener("touchstart", e => {
         const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        startDraw(touch.clientX - rect.left, touch.clientY - rect.top);
+        const t = e.touches[0];
+        startDraw(t.clientX - rect.left, t.clientY - rect.top);
       });
       canvas.addEventListener("touchmove", e => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        draw(touch.clientX - rect.left, touch.clientY - rect.top);
+        const t = e.touches[0];
+        draw(t.clientX - rect.left, t.clientY - rect.top);
       }, { passive: false });
       canvas.addEventListener("touchend", stopDraw);
 
-      // Clear canvas
-      document.getElementById("clearCanvas").addEventListener("click", () => {
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-      });
+      // Clear
+      document.getElementById("clearCanvas").addEventListener("click", resetCanvas);
 
-      // ===== Form submit =====
+      // Submit form
       form.addEventListener("submit", async e => {
         e.preventDefault();
         const name = document.getElementById("name").value.trim();
         const sentence = document.getElementById("sentence").value.trim();
 
-        // Convert canvas to image
+        // Convert drawing to PNG
         const dataURL = canvas.toDataURL("image/png");
-
-        // Upload image to Firebase Storage
         const imgRef = storageRef(storage, "images/" + Date.now() + ".png");
         await uploadString(imgRef, dataURL, "data_url");
         const url = await getDownloadURL(imgRef);
 
-        // Save text + image URL
+        // Save in DB
         push(ref(db, "messages"), { name, sentence, image: url });
 
-        // Reset form + canvas
+        // Reset
         form.reset();
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
+        resetCanvas();
       });
 
-      // ===== Display messages =====
+      // Display messages + images
       onChildAdded(ref(db, "messages"), snapshot => {
         const data = snapshot.val();
         const div = document.createElement("div");
@@ -127,7 +128,7 @@
           img.style.position = "absolute";
           img.style.top = Math.random() * 80 + "%";
           img.style.left = Math.random() * 80 + "%";
-          img.style.width = "100px";
+          img.style.width = "120px";
           background.appendChild(img);
         }
       });
@@ -138,8 +139,7 @@
   <div id="background"></div>
 
   <!-- Drawing canvas -->
-  <canvas id="drawCanvas" width="300" height="300" 
-          style="border:1px solid white; touch-action:none;"></canvas>
+  <canvas id="drawCanvas" style="border:1px solid white; touch-action:none;"></canvas>
   <br />
 
   <!-- Form -->
