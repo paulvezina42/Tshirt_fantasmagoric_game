@@ -71,6 +71,10 @@
 
 <div class="toolbar">
   <input type="color" id="colorPicker" value="#ffffff" title="Brush Color">
+  <label style="display:flex; align-items:center; gap:2px;">
+    Opacité:
+    <input type="range" id="brushOpacity" min="0.1" max="1" step="0.05" value="1" title="Brush Opacity">
+  </label>
   <input type="range" id="brushSize" min="1" max="50" value="5" title="Brush Size">
   <button id="brushBtn">Brush</button>
   <button id="eraserBtn">Eraser</button>
@@ -153,6 +157,7 @@ let drawing = false;
 let mode = "brush";
 let brushColor = document.getElementById("colorPicker").value;
 let brushSize = document.getElementById("brushSize").value;
+let brushOpacity = document.getElementById("brushOpacity").value;
 
 function startDraw(x,y){
   const layer = getActiveLayer();
@@ -164,7 +169,15 @@ function startDraw(x,y){
 function draw(x,y){
   const layer = getActiveLayer();
   if(!layer || !drawing) return;
-  layer.ctx.strokeStyle = mode === "brush" ? brushColor : "rgba(0,0,0,1)";
+  if(mode === "brush") {
+    layer.ctx.globalCompositeOperation = "source-over";
+    layer.ctx.strokeStyle = brushColor;
+    layer.ctx.globalAlpha = brushOpacity;
+  } else if(mode === "eraser") {
+    layer.ctx.globalCompositeOperation = "destination-out";
+    layer.ctx.strokeStyle = "rgba(0,0,0,1)";
+    layer.ctx.globalAlpha = 1;
+  }
   layer.ctx.lineWidth = brushSize;
   layer.ctx.lineTo(x,y);
   layer.ctx.stroke();
@@ -176,15 +189,16 @@ function stopDraw(){
   if(!layer) return;
   drawing=false;
   layer.ctx.beginPath();
+  layer.ctx.globalAlpha = 1; // reset
+  layer.ctx.globalCompositeOperation = "source-over"; // reset
 }
 
-// Mouse events
+// Mouse & Touch events
 canvasContainer.addEventListener("mousedown", e=>startDraw(e.offsetX,e.offsetY));
 canvasContainer.addEventListener("mousemove", e=>draw(e.offsetX,e.offsetY));
 canvasContainer.addEventListener("mouseup", stopDraw);
 canvasContainer.addEventListener("mouseleave", stopDraw);
 
-// Touch events
 canvasContainer.addEventListener("touchstart", e=>{
   const rect = canvasContainer.getBoundingClientRect();
   const touch = e.touches[0];
@@ -202,6 +216,7 @@ canvasContainer.addEventListener("touchend", stopDraw);
 document.getElementById("brushBtn").addEventListener("click", ()=>mode="brush");
 document.getElementById("eraserBtn").addEventListener("click", ()=>mode="eraser");
 document.getElementById("colorPicker").addEventListener("change", e=>brushColor=e.target.value);
+document.getElementById("brushOpacity").addEventListener("change", e=>brushOpacity=e.target.value);
 document.getElementById("brushSize").addEventListener("change", e=>brushSize=e.target.value);
 document.getElementById("clearBtn").addEventListener("click", ()=>{
   const layer = getActiveLayer();
