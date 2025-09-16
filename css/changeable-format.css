@@ -66,20 +66,20 @@ button {
 @media (max-width: 600px) {
   form {
     flex-direction: column;
-    width: 90%;
+    width: calc(100% - 20px); /* ✅ full width with 10px margin on each side */
+    max-width: 400px;         /* optional: prevent it from being too wide on medium screens */
     gap: 10px;
 
-    /* ✅ center properly without overflow */
-    left: auto;
-    right: auto;
-    transform: none;
-    margin: 0 auto;
+    left: 50%;
+    transform: translateX(-50%); /* ✅ proper centering */
+    margin: 0;
   }
 
   input, button {
     font-size: 18px;
     padding: 10px;
     width: 100%;
-    box-sizing: border-box; /* ✅ prevents slight overflow */
+    box-sizing: border-box;
   }
 }
+
