@@ -3,55 +3,142 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Canvas → ImgBB</title>
+<title>Fantasmagorie Paint + Upload</title>
+<style>
+  body {
+    margin: 0;
+    font-family: sans-serif;
+    background: #111;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .toolbar {
+    margin: 10px;
+    display: flex;
+    gap: 8px;
+  }
+  canvas {
+    border: 2px solid white;
+    touch-action: none;
+  }
+  input, button {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: none;
+  }
+  button {
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+</style>
 </head>
 <body>
-<canvas id="canvas" width="300" height="300" style="border:1px solid black;"></canvas>
-<br>
-<button id="uploadBtn">Upload Drawing</button>
+
+<div class="toolbar">
+  <input type="color" id="colorPicker" value="#ffffff">
+  <input type="range" id="brushSize" min="1" max="50" value="5">
+  <button id="brushBtn">Brush</button>
+  <button id="eraserBtn">Eraser</button>
+  <button id="clearBtn">Clear</button>
+  <button id="uploadBtn">Upload Drawing</button>
+</div>
+
+<canvas id="paintCanvas" width="400" height="400"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+  // -----------------------------
+  // Canvas drawing setup
+  const canvas = document.getElementById("paintCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// Simple drawing logic
-let drawing = false;
-canvas.addEventListener("mousedown", () => drawing = true);
-canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
-canvas.addEventListener("mousemove", (e) => {
+  let drawing = false;
+  let brushColor = document.getElementById("colorPicker").value;
+  let brushSize = document.getElementById("brushSize").value;
+  let mode = "brush"; // brush or eraser
+
+  function startDraw(x, y) {
+    drawing = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  function draw(x, y) {
     if (!drawing) return;
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "black";
+    ctx.lineWidth = brushSize;
+    ctx.strokeStyle = (mode === "brush") ? brushColor : "#000000";
     ctx.lineCap = "round";
-    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.lineTo(x, y);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(e.offsetX, e.offsetY);
-});
+    ctx.moveTo(x, y);
+  }
 
-const apiKey = "ae1416b43b6f7cef2d2585e752d31d32";
+  function stopDraw() {
+    drawing = false;
+    ctx.beginPath();
+  }
 
-document.getElementById("uploadBtn").addEventListener("click", async () => {
-    // Convert canvas to base64
+  // Mouse events
+  canvas.addEventListener("mousedown", e => startDraw(e.offsetX, e.offsetY));
+  canvas.addEventListener("mousemove", e => draw(e.offsetX, e.offsetY));
+  canvas.addEventListener("mouseup", stopDraw);
+  canvas.addEventListener("mouseleave", stopDraw);
+
+  // Touch events
+  canvas.addEventListener("touchstart", e => {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    startDraw(touch.clientX - rect.left, touch.clientY - rect.top);
+  });
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    draw(touch.clientX - rect.left, touch.clientY - rect.top);
+  }, { passive: false });
+  canvas.addEventListener("touchend", stopDraw);
+
+  // Brush / Eraser / Color / Size
+  document.getElementById("brushBtn").addEventListener("click", () => mode = "brush");
+  document.getElementById("eraserBtn").addEventListener("click", () => mode = "eraser");
+  document.getElementById("colorPicker").addEventListener("change", e => brushColor = e.target.value);
+  document.getElementById("brushSize").addEventListener("change", e => brushSize = e.target.value);
+
+  // Clear button
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = brushColor;
+  });
+
+  // -----------------------------
+  // ImgBB Upload
+  const apiKey = "YOUR_IMGBB_API_KEY"; // Replace with your API key
+  document.getElementById("uploadBtn").addEventListener("click", async () => {
     const base64Image = canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
-
-    // Send POST request to ImgBB
     const formData = new FormData();
     formData.append("key", apiKey);
     formData.append("image", base64Image);
 
     try {
-        const response = await fetch("https://api.imgbb.com/1/upload", {
-            method: "POST",
-            body: formData
-        });
-        const data = await response.json();
-        console.log("ImgBB URL:", data.data.url);
-        alert("Drawing uploaded! URL: " + data.data.url);
+      const response = await fetch("https://api.imgbb.com/1/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+      alert("Drawing uploaded! URL: " + data.data.url);
+      console.log("Uploaded URL:", data.data.url);
     } catch (err) {
-        console.error("Upload failed:", err);
+      console.error("Upload failed:", err);
+      alert("Upload failed!");
     }
-});
+  });
 </script>
+
 </body>
 </html>
