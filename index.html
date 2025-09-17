@@ -159,43 +159,42 @@ let brushColor = document.getElementById("colorPicker").value;
 let brushSize = document.getElementById("brushSize").value;
 let brushOpacity = document.getElementById("brushOpacity").value;
 
-function startDraw(x,y){
+function startDraw(x, y) {
   const layer = getActiveLayer();
-  if(!layer) return;
+  if (!layer) return;
   drawing = true;
   prevX = x;
   prevY = y;
+
   layer.ctx.beginPath();
-  layer.ctx.moveTo(x,y);
+  layer.ctx.moveTo(x, y);
 }
 
-function draw(x,y){
+function draw(x, y) {
   const layer = getActiveLayer();
-  if(!layer || !drawing) return;
+  if (!layer || !drawing) return;
 
-  if(mode === "brush"){
-    layer.ctx.globalAlpha = brushOpacity;
+  if (mode === "brush") {
+    layer.ctx.globalCompositeOperation = "source-over";
     layer.ctx.strokeStyle = brushColor;
     layer.ctx.lineWidth = brushSize;
     layer.ctx.lineCap = "round";
     layer.ctx.lineJoin = "round";
+    layer.ctx.globalAlpha = brushOpacity;
 
-    layer.ctx.lineTo(x,y);
+    // Continue la ligne
+    layer.ctx.lineTo(x, y);
     layer.ctx.stroke();
-    layer.ctx.beginPath();
-    layer.ctx.moveTo(x,y);
 
-  } else if(mode === "eraser"){
+  } else if (mode === "eraser") {
     layer.ctx.globalCompositeOperation = "destination-out";
     layer.ctx.lineWidth = brushSize;
     layer.ctx.lineCap = "round";
     layer.ctx.lineJoin = "round";
     layer.ctx.globalAlpha = 1;
 
-    layer.ctx.lineTo(x,y);
+    layer.ctx.lineTo(x, y);
     layer.ctx.stroke();
-    layer.ctx.beginPath();
-    layer.ctx.moveTo(x,y);
   }
 
   prevX = x;
@@ -203,11 +202,12 @@ function draw(x,y){
 }
 
 function stopDraw() {
-  const layer = getActiveLayer();
-  if(layer && mode === "eraser") {
-    layer.ctx.globalCompositeOperation = "source-over"; // remet le mode normal
-  }
   drawing = false;
+  const layer = getActiveLayer();
+  if (layer) {
+    layer.ctx.closePath();
+    layer.ctx.globalCompositeOperation = "source-over"; // reset
+  }
 }
 
 
